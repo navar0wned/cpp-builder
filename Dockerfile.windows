@@ -1,0 +1,34 @@
+# Dockerfile for C++ project for windows
+
+#FROM mcr.microsoft.com/windows/nanoserver:1909
+FROM mcr.microsoft.com/windows:1809
+
+RUN powershell -Command \
+    Install-PackageProvider -Name NuGet -Force -Scope CurrentUser -AllowClobber; \
+    Install-Module -Name PowerShellGet -Force -AllowClobber -Scope CurrentUser -Force; \
+    Install-Module -Name Chocolatey -Force -AllowClobber -Scope CurrentUser -Force; \
+    choco install -y visualstudio2019buildtools --installargs "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"; \
+    choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'; \
+    git clone --branch v2.13.7 --depth 1 https://github.com/catchorg/Catch2.git C:\catch2; \
+    setx CATCH_INCLUDE_DIR C:\catch2\single_include /M
+
+
+# default
+ARG COMPILER=clang
+ARG BUILD_TYPE=release
+
+ENV COMPILER=${COMPILER}
+ENV BUILD_TYPE=${BUILD_TYPE}
+
+WORKDIR C:/app
+COPY . .
+COPY /app/example.txt /app/bin/example.txt
+
+
+RUN mkdir build
+# Separate cmake configuration and build steps
+RUN cmake -Bbuild -GNinja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_CXX_COMPILER=${COMPILER} .
+RUN cmake --build build/"${BUILD_TYPE}" -j
+
+RUN cp /app/build/"${BUILD_TYPE}"/a.out /bin/a.out
+CMD ["cmd", "/k"]

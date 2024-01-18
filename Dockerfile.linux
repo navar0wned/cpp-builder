@@ -1,0 +1,35 @@
+# Dockerfile for building C++ app for Linux
+
+FROM debian:latest
+
+RUN apt-get update && \
+    apt-get install -y \
+    build-essential \
+    cmake \
+    ninja-build \
+    clang \
+    clang-format \
+    libssl-dev \
+    git \
+    valgrind
+
+#RUN git submodule init && git submodule update --recursive
+
+# default
+ARG BUILD_TYPE=debug
+ENV BUILD_TYPE=${BUILD_TYPE}
+
+WORKDIR /app
+
+COPY . .
+COPY /app/example.txt /app/bin/example.txt
+
+# Ensure the build directory exists before removing its contents
+RUN mkdir -p /app/build && rm -rf /app/build/*
+RUN cmake -E remove_directory /app/build
+
+# Separate cmake configuration and build steps
+RUN cmake -Bbuild/"${BUILD_TYPE}" -GNinja -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" .
+RUN cmake --build build/"${BUILD_TYPE}" -j
+
+CMD ["bash"]
